@@ -57,8 +57,9 @@ def setupListener():
         listener.join()
 
 def loop():
-    killLoop = False
+    print("Starting Smite Taunts")
     print("Looking for Smite...")
+    killLoop = False
     while 1:
         if processRunning("smite"):
             print("=====Smite Found!=====")
@@ -74,5 +75,4 @@ def loop():
 
         time.sleep(1)
 
-print("Starting Smite Taunts")
 loop()
