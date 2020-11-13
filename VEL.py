@@ -1,47 +1,50 @@
+import subprocess
 import psutil
-import time
-import sys
+from time import sleep
 from pynput import keyboard
+import sys
 
-def processRunning(processName):
+def startSmite():
+    subprocess.call(r"C:\Program Files (x86)\Steam\Steam.exe -applaunch 386360")
+
+def smiteRunning():
     for process in psutil.process_iter():
         try:
-            if processName.lower() in process.name().lower():
+            if "smite" in process.name().lower():
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
     return False
 
-
 kb = keyboard.Controller()
-def pressKey(key, delay=0.001):
-    kb.press(key)
-    time.sleep(delay)
+def keyDown(key, delay=0.001):
+    kb.type(key)
+    sleep(delay)
 
-def releaseKey(key, delay=0.001):
+def keyUp(key, delay=0.001):
     kb.release(key)
-    time.sleep(delay)
+    sleep(delay)
 
-def typeKey(key, delay=0.001):
-    pressKey(key, delay)
-    releaseKey(key, delay)
+def type(key, delay=0.001):
+    keyDown(key, delay)
+    keyUp(key, delay)
 
 def tauntLaugh():
-    typeKey('v')
-    typeKey('e')
-    typeKey('l')
+    type('v')
+    type('e')
+    type('l')
 
 def tauntTaunt():
-    typeKey('v')
-    typeKey('e')
-    typeKey('t')
+    type('v')
+    type('e')
+    type('t')
 
 def tauntJoke():
-    typeKey('v')
-    typeKey('e')
-    typeKey('l')
+    type('v')
+    type('e')
+    type('l')
 
-def on_press(key):
+def on_type(key):
     if key == keyboard.Key.shift_l:
         tauntLaugh()
     elif key == keyboard.Key.caps_lock:
@@ -56,23 +59,20 @@ def setupListener():
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
-def loop():
-    print("Starting Smite Taunts")
-    print("Looking for Smite...")
-    killLoop = False
-    while 1:
-        if processRunning("smite"):
-            print("=====Smite Found!=====")
-            print("[ F1 ] --> Quit")
-            print("[ ` ] --> Joke")
-            print("[ CAPS ] --> Taunt")
-            print("[ LSHIFT ] --> Joke")
-            setupListener()
-            killLoop = True
+def main():
+    print("VEL Smite Taunts Started!")
+    if not smiteRunning():
+        startSmite()
+        print("Starting Smite...")
+        while not smiteRunning():
+            sleep(1)
+        print("Smite Started!")
 
-        if killLoop == True:
-            break
+    print("===== Controls =====")
+    print("[ F1 ] --> Quit")
+    print("[ ` ] --> Joke")
+    print("[ CAPS ] --> Taunt")
+    print("[ LSHIFT ] --> Joke")
+    setupListener()
 
-        time.sleep(1)
-
-loop()
+main()
