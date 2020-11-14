@@ -1,15 +1,100 @@
+import os
 import subprocess
 import psutil
 from time import sleep
 from pynput import keyboard
 import sys
+import winreg
 
-def startSmite():
+def start_smite():
     """Starts Smite from Steam by using Steam app ID (386360).
     """
-    subprocess.call(r"C:\Program Files (x86)\Steam\Steam.exe -applaunch 386360")
 
-def smiteRunning():
+    REG_PATH = r"Software\VEL"
+    def set_registry_key(name, value):
+        """Sets registry name to value in HKEY_CURRENT_USER\REG_PATH.
+
+        Args:
+            name (string): Name of the registry key.
+            value (string): The value of the registry key.
+
+        Returns:
+            bool: Returns True if sets the registry key, False otherwise
+        """
+        try:
+            winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_PATH)
+            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0,
+                                        winreg.KEY_WRITE)
+            winreg.SetValueEx(registry_key, name, 0, winreg.REG_SZ, value)
+            winreg.CloseKey(registry_key)
+            return True
+        except WindowsError:
+            return False
+
+    def get_registry_key(name):
+        """Gets the value of the registry key in HKEY_CURRENT_USER\REG_PATH
+
+        Args:
+            name (string): The name of the registry key to get.
+
+        Returns:
+            string: Returns the value of the registry key.
+        """
+        try:
+            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0,
+                                        winreg.KEY_READ)
+            value, regtype = winreg.QueryValueEx(registry_key, name)
+            winreg.CloseKey(registry_key)
+            return value
+        except WindowsError:
+            return None
+
+    # https://stackoverflow.com/a/1724723
+    def find(name, path):
+        """Gets the path for a  file.
+
+        Args:
+            name (string): The name of the file.
+            path (string): The path of the drive.
+
+        Returns:
+            string: The full path for the file.
+        """
+        for root, dirs, files in os.walk(path):
+            if name in files:
+                return os.path.join(root, name)
+
+    path_registry = get_registry_key("PATH")
+    applaunch = ' -applaunch 386360'
+    if path_registry != None:
+        path_registry += applaunch
+        subprocess.call(path_registry)
+
+    default_path = r'C:\Program Files (x86)\Steam\steam.exe'
+
+    if os.path.isfile(default_path):
+        print('Trying default Steam location:', default_path)
+        set_registry_key("PATH", default_path)
+        subprocess.run(default_path + applaunch)
+    else:
+        print('Steam not found in default location...')
+
+    drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    drives = ['{}:'.format(drive) for drive in drive_letters if os.path.exists('{}:'.format(drive))]
+
+    print('Searching for Steam...')
+    for drive in drives:
+        path = find('steam.exe', drive)
+        if path != None:
+            print('Found a Steam installation:', path)
+            path = path + applaunch
+            set_registry_key("PATH", path)
+
+            print('Launching SMITE:', path)
+            subprocess.call(path)
+            break
+
+def smite_running():
     """Checks to see if Smite is currently running.
 
     Returns:
@@ -25,7 +110,7 @@ def smiteRunning():
 
 # kb is our keyboard object
 kb = keyboard.Controller()
-def keyDown(key, delay=0.001):
+def key_down(key, delay=0.001):
     """Presses a key down.
 
     Args:
@@ -35,7 +120,7 @@ def keyDown(key, delay=0.001):
     kb.type(key)
     sleep(delay)
 
-def keyUp(key, delay=0.001):
+def key_up(key, delay=0.001):
     """Releases a key that is pressed.
 
     Args:
@@ -52,24 +137,24 @@ def type(key, delay=0.001):
         key (int): The keycode of the key to press.
         delay (float, optional): Time to sleep after press and release. Defaults to 0.001 (1ms).
     """
-    keyDown(key, delay)
-    keyUp(key, delay)
+    key_down(key, delay)
+    key_up(key, delay)
 
-def tauntLaugh():
+def taunt_laugh():
     """Types the keys [VEL] for laugh taunt.
     """
     type('v')
     type('e')
     type('l')
 
-def tauntTaunt():
+def taunt_taunt():
     """Types the keys [VET] for taunt taunt.
     """
     type('v')
     type('e')
     type('t')
 
-def tauntJoke():
+def taunt_joke():
     """Types the keys [VEJ] for joke taunt.
     """
     type('v')
@@ -87,17 +172,16 @@ def on_press(key):
         key (int): The keycode of the key press to listen for.
     """
     if key == keyboard.Key.shift_l:
-        tauntLaugh()
+        taunt_laugh()
     elif key == keyboard.Key.caps_lock:
-        tauntTaunt()
+        taunt_taunt()
     elif key == keyboard.KeyCode.from_char('`'):
-        tauntJoke()
+        taunt_joke()
     elif key == keyboard.Key.f1:
-        keyboard.Listener.stop()
         sys.exit()
         quit()
 
-def setupListener():
+def setup_listener():
     """Setups keyboard listener in separate thread.
     """
     with keyboard.Listener(on_press=on_press) as listener:
@@ -106,19 +190,19 @@ def setupListener():
 def main():
     """Main Loop. Will start Smite if not launched. If Smite is already launched, keyboard listener will start.
     """
-    print("VEL Smite Taunts Started!")
-    if not smiteRunning():
-        startSmite()
-        print("Starting Smite...")
-        while not smiteRunning():
+    print('VEL Smite Taunts Started!')
+    if not smite_running():
+        start_smite()
+        print('Starting Smite...')
+        while not smite_running():
             sleep(1)
-        print("Smite Started!")
+        print('Smite Started!')
 
-    print("===== Controls =====")
-    print("[ F1 ]     ----> Quit")
-    print("[ ` ]      ----> Joke")
-    print("[ CAPS ]   ----> Taunt")
-    print("[ LSHIFT ] ----> Joke")
-    setupListener()
+    print('===== Controls =====')
+    print('[ F1 ]     ----> Quit')
+    print('[ ` ]      ----> Joke')
+    print('[ CAPS ]   ----> Taunt')
+    print('[ LSHIFT ] ----> Joke')
+    setup_listener()
 
 main()

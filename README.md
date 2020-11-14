@@ -1,10 +1,14 @@
 # VEL
 Taunts for Smite
-## Notes
-Works only for starting Smite from Steam. Steam must be installed to default `C:\Program Files (x86)`
+## Features
+- Starts Smite when VEL starts (VEL can also be started after Smite is started)
+- Spams taunts from the VGS chat menu
+    - Laugh [VEL]
+    - Taunt [VET]
+    - Joke [VEJ]
 ## About
-- __Version__: 1.0
-- __Release Date__: 11/12/2020
+- __Version__: 1.1
+- __Release Date__: 11/13/2020
 - __Supported Platforms__:
     - Windows
 - __Download__:
@@ -27,4 +31,5 @@ CMD to the directory and run:
     [ CAPS ]   ---> Taunt
     [ LSHIFT ] ---> Joke
 ## Credits
+- @mbeaver502
 - [BleuBear](https://www.deviantart.com/bleubear) - Ra Image
