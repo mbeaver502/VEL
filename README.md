@@ -26,7 +26,7 @@ CMD to the directory and run:
 
     python VEL.py
 ## Controls
-    [ F1 ]     ---> Quit
+    [ F5 ]     ---> Quit
     [ ` ]      ---> Joke
     [ CAPS ]   ---> Taunt
     [ LSHIFT ] ---> Joke

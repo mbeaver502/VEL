@@ -3,8 +3,8 @@ import subprocess
 import psutil
 from time import sleep
 from pynput import keyboard
-import sys
 import winreg
+from threading import Thread
 
 def start_smite():
     """Starts Smite from Steam by using Steam app ID (386360).
@@ -108,6 +108,15 @@ def smite_running():
             pass
     return False
 
+def smite_check_thread():
+    """Thread function for checking for smite's process.
+    """
+    while 1:
+        if not smite_running():
+            print('Smite is no longer running, quitting now!')
+            os._exit(1)
+        sleep(1)
+
 # kb is our keyboard object
 kb = keyboard.Controller()
 def key_down(key, delay=0.001):
@@ -177,15 +186,16 @@ def on_press(key):
         taunt_taunt()
     elif key == keyboard.KeyCode.from_char('`'):
         taunt_joke()
-    elif key == keyboard.Key.f1:
-        sys.exit()
-        quit()
+    elif key == keyboard.Key.f5:
+        os._exit(1)
 
-def setup_listener():
-    """Setups keyboard listener in separate thread.
+def start_threads():
+    """Starts Threads
+            - 1. Process Listener
+            - 2. Keyboard Listener
     """
-    with keyboard.Listener(on_press=on_press) as listener:
-        listener.join()
+    Thread(target=smite_check_thread).start()
+    keyboard.Listener(on_press=on_press).start()
 
 def main():
     """Main Loop. Will start Smite if not launched. If Smite is already launched, keyboard listener will start.
@@ -199,10 +209,10 @@ def main():
         print('Smite Started!')
 
     print('===== Controls =====')
-    print('[ F1 ]     ----> Quit')
+    print('[ F5 ]     ----> Quit')
     print('[ ` ]      ----> Joke')
     print('[ CAPS ]   ----> Taunt')
     print('[ LSHIFT ] ----> Joke')
-    setup_listener()
+    start_threads()
 
 main()
