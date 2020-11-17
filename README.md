@@ -2,13 +2,14 @@
 Taunts for Smite
 ## Features
 - Starts Smite when VEL starts (VEL can also be started after Smite is started)
-- Spams taunts from the VGS chat menu
+- Taunts from the VGS chat menu
     - Laugh [VEL]
     - Taunt [VET]
     - Joke [VEJ]
+- Tap at your own tempo or hold the key!
 ## About
-- __Version__: 1.1
-- __Release Date__: 11/13/2020
+- __Version__: 1.2
+- __Release Date__: 11/17/2020
 - __Supported Platforms__:
     - Windows
 - __Download__:
@@ -31,5 +32,6 @@ CMD to the directory and run:
     [ CAPS ]   ---> Taunt
     [ LSHIFT ] ---> Joke
 ## Credits
-- @mbeaver502
-- [BleuBear](https://www.deviantart.com/bleubear) - Ra Image
+- [@cyoung502](https://github.com/cyoung502)
+- [@mbeaver502](https://github.com/mbeaver502)
+- [@BleuBear](https://www.deviantart.com/bleubear)
