@@ -282,6 +282,30 @@ def start_threads():
     Thread(target=smite_check_thread).start()
     keyboard.Listener(on_press=on_press).start()
 
+
+def build_menu(games_array: list) -> dict:
+    """
+    Builds a menu of games to select from.
+
+        Parameters:
+            games_array (list): List of games data objects
+
+        Returns:
+            menu (dict): Dictionary in this format:
+                index: game name
+    """
+    menu_idx = 1
+    menu = dict()
+
+    for game_dict in games_array:
+        menu[menu_idx] = game_dict['game_name']
+        menu_idx += 1
+
+    return menu
+
+
+
+
 #-------------------------------------------------
 # main
 #-------------------------------------------------
@@ -291,6 +315,14 @@ def main():
     steam = setup_steam()
     if steam['steam_found'] and steam['games_array']:
         print('Setup successful.')
+
+        menu = build_menu(steam['games_array'])
+        if menu:
+            print('Available games:')
+            for idx in menu:
+                print('{:2} {}'.format(idx, menu[idx]))
+            menu_input = input('Choose which game to use: ')
+            
     else:
         print('Setup failed. Aborting.')
         os._exit(-1)
