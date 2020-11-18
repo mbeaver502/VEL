@@ -5,93 +5,149 @@ from time import sleep
 from pynput import keyboard
 import winreg
 from threading import Thread
+import configparser
 
-def start_smite():
-    """Starts Smite from Steam by using Steam app ID (386360).
+#-------------------------------------------------
+# CONSTANTS
+#-------------------------------------------------
+CONFIG_FILENAME = 'config.cfg'
+SYSTEM_SECTION = 'SYSTEM'
+DEFAULTPATH_KEY = 'DefaultPath'
+STEAMPATH_KEY = 'SteamPath'
+KEY_SEPARATOR = '~'
+
+#-------------------------------------------------
+# setup_steam
+#-------------------------------------------------
+def setup_steam() -> dict:
+    """
+    Loads Steam data from the CONFIG_FILENAME file.
+
+        Returns:
+            return (dict): 
+                steam_found: Boolean indicating whether steam.exe has been found
+                steam_path: String containing the steam.exe path, if it exists
+                games_array: Array of dict objects representing game data from the CONFIG_FILENAME file
     """
 
-    REG_PATH = r"Software\VEL"
-    def set_registry_key(name, value):
-        """Sets registry name to value in HKEY_CURRENT_USER\REG_PATH.
-
-        Args:
-            name (string): Name of the registry key.
-            value (string): The value of the registry key.
-
-        Returns:
-            bool: Returns True if sets the registry key, False otherwise
+    def get_steam_path(config: configparser.ConfigParser) -> (bool, str):
         """
-        try:
-            winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_PATH)
-            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_WRITE)
-            winreg.SetValueEx(registry_key, name, 0, winreg.REG_SZ, value)
-            winreg.CloseKey(registry_key)
-            return True
-        except WindowsError:
-            return False
+        Loads the Steam path from CONFIG_FILENAME file or attempts to find a working path
+        if none provided.
 
-    def get_registry_key(name):
-        """Gets the value of the registry key in HKEY_CURRENT_USER\REG_PATH
+            Parameters:
+                config (configparser.ConfigParser): Object representing the CONFIG_FILENAME file
 
-        Args:
-            name (string): The name of the registry key to get.
-
-        Returns:
-            string: Returns the value of the registry key.
+            Returns:
+                return (bool, str): Tuple whose values are:
+                    bool: Boolean indicating whether a Steam installation path was found
+                    str: String representing the Steam installation path, if it exists
         """
-        try:
-            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_READ)
-            value, regtype = winreg.QueryValueEx(registry_key, name)
-            winreg.CloseKey(registry_key)
-            return value
-        except WindowsError:
-            return None
 
-    # https://stackoverflow.com/a/1724723
-    def find(name, path):
-        """Gets the path for a  file.
+        def find(name: str, path: str) -> str:
+            """
+            Finds a given file in the filesystem, starting with path.
 
-        Args:
-            name (string): The name of the file.
-            path (string): The path of the drive.
+                Parameters:
+                    name (str): Name of file to find
+                    path (str): Root path to begin search
 
-        Returns:
-            string: The full path for the file.
+                Return:
+                    return (str): Path of the file, if one exists
+            """
+            for root, dirs, files in os.walk(path):
+                if name in files:
+                    print(root)
+                    return os.path.join(root, name)
+
+        steam_path = ''
+        steam_found = False
+
+        if SYSTEM_SECTION in config:
+            if STEAMPATH_KEY in config[SYSTEM_SECTION]:
+                steam_path = config[SYSTEM_SECTION][STEAMPATH_KEY]
+                if os.path.isfile(steam_path):
+                    print('Using user-defined location:', steam_path)
+                    steam_found = True
+                else:
+                    print('User-defined path {} does not exist!'.format(steam_path))
+                    steam_found = False
+            else:
+                steam_found = False
+
+            if not steam_found:
+                if DEFAULTPATH_KEY in config[SYSTEM_SECTION]:
+                    default_path = config[SYSTEM_SECTION][DEFAULTPATH_KEY]
+                    if os.path.isfile(default_path):
+                        print('Updating config to use path:', default_path)
+                        steam_path = default_path
+                        config[SYSTEM_SECTION][STEAMPATH_KEY] = steam_path
+                        with open(CONFIG_FILENAME, 'w') as config_file:
+                            config.write(config_file)
+                        steam_found = True
+
+                    else:
+                        print('Steam not found in default location...')
+                        
+                        drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                        drives = ['{}:\\'.format(drive) for drive in drive_letters if os.path.exists('{}:'.format(drive))]
+
+                        print('Searching for Steam...')
+                        for drive in drives:
+                            search_path = find('steam.exe', drive)
+                            if search_path:
+                                print('Found a Steam installation:', search_path)
+                                print('Updating config to use new path:', search_path)
+                                steam_path = search_path
+                                config[SYSTEM_SECTION][STEAMPATH_KEY] = steam_path
+                                with open(CONFIG_FILENAME, 'w') as config_file:
+                                    config.write(config_file)
+                                steam_found = True
+                                break
+        return (steam_found, steam_path)
+
+    def get_games(config: configparser.ConfigParser) -> list:
         """
-        for root, dirs, files in os.walk(path):
-            if name in files:
-                return os.path.join(root, name)
+        Returns an array of game data contained in the CONFIG_FILENAME file.
 
-    path_registry = get_registry_key("PATH")
-    applaunch = ' -applaunch 386360'
-    if path_registry != None:
-        path_registry += applaunch
-        subprocess.call(path_registry)
+            Parameters:
+                config (configparser.ConfigParser): Object representing the CONFIG_FILENAME file
 
-    default_path = r'C:\Program Files (x86)\Steam\steam.exe'
+            Return:
+                games_array (list): List of dict objects representing game data
+        """
+        games_array = []                        
+        for section in config:
+            if section != SYSTEM_SECTION and section != configparser.DEFAULTSECT:
+                game_dict = dict()
+                game_dict['game_name'] = section
+                for key in config[section]:
+                    key_val = config[section][key].strip()
+                    if key_val:
+                        game_dict[key] = key_val.split(KEY_SEPARATOR) if KEY_SEPARATOR in key_val else key_val
+                games_array.append(game_dict)
 
-    if os.path.isfile(default_path):
-        print('Trying default Steam location:', default_path)
-        set_registry_key("PATH", default_path)
-        subprocess.run(default_path + applaunch)
-    else:
-        print('Steam not found in default location...')
+        if games_array:
+            print('Found these games in config:')
+            for game in games_array:
+                print('{}'.format(game['game_name']))
+                for val in game:
+                    if val != 'game_name':
+                        print('  - {} = {}'.format(val, game[val]))
+        
+        return games_array
 
-    drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    drives = ['{}:'.format(drive) for drive in drive_letters if os.path.exists('{}:'.format(drive))]
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILENAME)
 
-    print('Searching for Steam...')
-    for drive in drives:
-        path = find('steam.exe', drive)
-        if path != None:
-            print('Found a Steam installation:', path)
-            path = path + applaunch
-            set_registry_key("PATH", path)
+    steam_found, steam_path = get_steam_path(config)
+    games_array = get_games(config)
+     
+    return {'steam_found': steam_found, 'steam_path':steam_path, 'games_array': games_array}
 
-            print('Launching SMITE:', path)
-            subprocess.call(path)
-            break
-
+#-------------------------------------------------
+# smite_running
+#-------------------------------------------------
 def smite_running():
     """Checks to see if Smite is currently running.
 
@@ -106,6 +162,9 @@ def smite_running():
             pass
     return False
 
+#-------------------------------------------------
+# smite_check_thread
+#-------------------------------------------------
 def smite_check_thread():
     """Thread function for checking for smite's process.
     """
@@ -115,8 +174,15 @@ def smite_check_thread():
             os._exit(1)
         sleep(1)
 
+#-------------------------------------------------
+# KEYBOARD HOOK METHODS
+#-------------------------------------------------
 # kb is our keyboard object
 kb = keyboard.Controller()
+
+#-------------------------------------------------
+# key_down
+#-------------------------------------------------
 def key_down(key, delay=0.001):
     """Presses a key down.
 
@@ -127,6 +193,9 @@ def key_down(key, delay=0.001):
     kb.type(key)
     sleep(delay)
 
+#-------------------------------------------------
+# key_up
+#-------------------------------------------------
 def key_up(key, delay=0.001):
     """Releases a key that is pressed.
 
@@ -137,6 +206,9 @@ def key_up(key, delay=0.001):
     kb.release(key)
     sleep(delay)
 
+#-------------------------------------------------
+# type
+#-------------------------------------------------
 def type(key, delay=0.001):
     """Simulates a single keystroke, pressing a key and releasing it.
 
@@ -147,6 +219,9 @@ def type(key, delay=0.001):
     key_down(key, delay)
     key_up(key, delay)
 
+#-------------------------------------------------
+# taunt_laugh
+#-------------------------------------------------
 def taunt_laugh():
     """Types the keys [VEL] for laugh taunt.
     """
@@ -154,6 +229,9 @@ def taunt_laugh():
     type('e')
     type('l')
 
+#-------------------------------------------------
+# taunt_taunt
+#-------------------------------------------------
 def taunt_taunt():
     """Types the keys [VET] for taunt taunt.
     """
@@ -161,6 +239,9 @@ def taunt_taunt():
     type('e')
     type('t')
 
+#-------------------------------------------------
+# taunt_joke
+#-------------------------------------------------
 def taunt_joke():
     """Types the keys [VEJ] for joke taunt.
     """
@@ -168,6 +249,9 @@ def taunt_joke():
     type('e')
     type('j')
 
+#-------------------------------------------------
+# on_press
+#-------------------------------------------------
 def on_press(key):
     """Callback function for our keyboard listener. Listens for a key and will carry out the following if pressed:
         - Left Shift: Laugh
@@ -187,6 +271,9 @@ def on_press(key):
     elif key == keyboard.Key.f5:
         os._exit(1)
 
+#-------------------------------------------------
+# start_threads
+#-------------------------------------------------
 def start_threads():
     """Starts Threads
             - 1. Process Listener
@@ -195,22 +282,31 @@ def start_threads():
     Thread(target=smite_check_thread).start()
     keyboard.Listener(on_press=on_press).start()
 
+#-------------------------------------------------
+# main
+#-------------------------------------------------
 def main():
     """Main Loop. Will start Smite if not launched. If Smite is already launched, keyboard listener will start.
     """
-    print('VEL Smite Taunts Started!')
-    if not smite_running():
-        start_smite()
-        print('Starting Smite...')
-        while not smite_running():
-            sleep(1)
-        print('Smite Started!')
+    steam = setup_steam()
+    if steam['steam_found'] and steam['games_array']:
+        print('Setup successful.')
+    else:
+        print('Setup failed. Aborting.')
+        os._exit(-1)
 
-    print('===== Controls =====')
-    print('[ F5 ]     ----> Quit')
-    print('[ ` ]      ----> Joke')
-    print('[ CAPS ]   ----> Taunt')
-    print('[ LSHIFT ] ----> Joke')
-    start_threads()
 
-main()
+    # print('VEL Smite Taunts Started!')
+    # if not smite_running():
+    #     start_smite()
+    #     print('Starting Smite...')
+    #     while not smite_running():
+    #         sleep(1)
+    #     print('Smite Started!')
+    # start_threads() 
+
+#-------------------------------------------------
+# ENTRYPOINT
+#-------------------------------------------------
+if __name__ == "__main__":
+    main()
